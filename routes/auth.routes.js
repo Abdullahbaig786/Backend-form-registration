@@ -72,7 +72,50 @@ router.post("/signup", (req, res, next) => {
     return;
   }
 }); //close post
+router.get("/userProfile", (req, res) => {
+  res.render("users/user-profile", { userInSession: req.session.currentUser });
+});
+//////////// L O G I N ///////////
+router.get("/login", (req, res) => res.render("auth/login"));
+router.post("/login", (req, res, next) => {
+  console.log("SESSION =====> ", req.session);
+  const { email, password } = req.body;
 
-router.get("/userProfile", (req, res) => res.render("users/user-profile"));
+  if (email === "" || password === "") {
+    res.render("auth/login", {
+      errorMessage: "Please enter both, email and password to login.",
+    });
+    return;
+  }
+  //////////// L O G O U T ///////////
+  router.post("/logout", (req, res, next) => {
+    req.session.destroy((err) => {
+      if (err) next(err);
+      res.redirect("/");
+    });
+  });
+
+  //check the user is inside the database or not
+  User.findOne({ email })
+    .then((user) => {
+      if (!user) {
+        console.log("Email not registered. ");
+        res.render("auth/login", {
+          errorMessage: "User not found and/or incorrect password.",
+        });
+        return;
+      } else if (bcryptjs.compareSync(password, user.passwordHash)) {
+        // res.render("users/user-profile", { user });
+        req.session.currentUser = user;
+        res.redirect("/userProfile");
+      } else {
+        console.log("Incorrect password. ");
+        res.render("auth/login", {
+          errorMessage: "User not found and/or incorrect password.",
+        });
+      }
+    })
+    .catch((error) => next(error));
+});
 
 module.exports = router;
